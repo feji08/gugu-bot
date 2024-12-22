@@ -67,7 +67,7 @@ async def handle_send_summary(bot: Bot, event: Event):
     today = get_checkin_day() - timedelta(days=1)
     for user_id in user_ids:
         # 获取用户昵称
-        nickname = id_nickname[user_id]
+        nickname = session.query(User).filter_by(user_id=user_id).first().nickname
 
         # 每个用户的记录字典
         user_record = {"姓名": nickname}

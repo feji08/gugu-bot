@@ -35,7 +35,7 @@ class CheckInRecord(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, nullable=False)  # 用户 ID
     assignment_id = Column(Integer, ForeignKey('assignments.id'), nullable=False)  # 作业类型 ID
-    checkin_time = Column(DateTime, default=datetime.utcnow)  # 打卡时间
+    checkin_time = Column(DateTime, nullable=False)  # 打卡时间
 
     # 定义与作业类型表的关系
     assignment = relationship("Assignment", back_populates="checkin_records")
