@@ -68,7 +68,7 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 # 插入默认的作业类型
-default_assignments = ["输出练笔", "扒文扒榜", "其他练习"]
+default_assignments = ["输出练笔", "扒文扒榜", "节奏作业","摘抄练习","其他练习"]
 
 for assignment_name in default_assignments:
     # 检查作业类型是否已经存在

@@ -27,7 +27,7 @@ async def handle_first_receive(bot: Bot, event: Event):
         # 获取用户的 user_id
     user_id = event.get_user_id()
     print(user_id)
-    checkin_time = get_current_day(time_zone)
+    checkin_time = get_current_time()
     print(checkin_time)
     # 计算打卡时间的开始和结束
     checkin_time_start,checkin_time_end = get_time_window(checkin_time.date())
@@ -62,7 +62,7 @@ async def handle_check_in(bot: Bot, event: Event):
     # 获取用户的 user_id
     user_id = event.get_user_id()
     print(user_id)
-    checkin_time = get_current_day(time_zone)
+    checkin_time = get_current_time()
     print(checkin_time)
     # 计算打卡时间的开始和结束
     checkin_time_start,checkin_time_end = get_time_window(checkin_time.date())
@@ -138,7 +138,7 @@ async def handle_leave(bot: Bot, event: Event):
     else:
         # 正常请假
         # 首先记录请假时间（特殊checkin）
-        checkin_time = get_current_day(time_zone)
+        checkin_time = get_current_time()
         print(checkin_time)
         # 计算打卡时间的开始和结束
         checkin_time_start,checkin_time_end = get_time_window(checkin_time.date())
@@ -185,7 +185,7 @@ async def handle_redeem(bot: Bot, event: Event):
         await redeem_early_bird.send("你没有足够的早鸟卡兑换请假。需要2张早鸟卡才能兑换一次请假。")
     else:
         # 打卡记录
-        checkin_time= get_current_day(time_zone)
+        checkin_time= get_current_time()
         print(checkin_time)
         # 计算打卡时间的开始和结束
         checkin_time_start,checkin_time_end = get_time_window(checkin_time.date())
