@@ -1,6 +1,6 @@
 from nonebot import on_command
 from nonebot.adapters.qq import Bot, Event
-from ..database import Session, Assignment, CheckInRecord, EarlyBirdRecord, LeaveRecord
+from ..database import Session, Assignment, CheckInRecord, EarlyBirdRecord, LeaveRecord, RewardRecord
 from datetime import datetime, timedelta
 from ..myGlobals import *
 
@@ -38,6 +38,10 @@ async def handle_week_summary(bot: Bot, event: Event):
     early_bird_record = session.query(EarlyBirdRecord).filter_by(user_id=user_id).first()
     early_bird_count = early_bird_record.count if early_bird_record else 0
 
+    # 查询奖励次数
+    reward = session.query(RewardRecord).filter_by(user_id=user_id).first()
+    reward_count = reward.count if reward else 0
+
     # 查询当前周内的所有打卡记录
     records = session.query(CheckInRecord).filter(
         CheckInRecord.user_id == user_id,
@@ -62,7 +66,8 @@ async def handle_week_summary(bot: Bot, event: Event):
             summary_message += f"{assignment}: {count} 次\n"
 
     summary_message += f"\n本周期请假次数：{leave_count}/{leave_limit}次\n"
-    summary_message += f"当前早鸟卡数量：{early_bird_count} 张\n"
+    summary_message += f"当前早鸟卡：{early_bird_count} 张\n"
+    summary_message += f"当前奖励：{reward_count} 次\n"
 
     # 发送总结信息
     await week_summary.send(summary_message)

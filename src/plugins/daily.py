@@ -1,7 +1,7 @@
 from sqlalchemy import func
 from nonebot import on_command
 from nonebot.adapters.qq import Bot, Event
-from ..database import Session, Assignment, CheckInRecord, EarlyBirdRecord, LeaveRecord
+from ..database import Session, Assignment, CheckInRecord, EarlyBirdRecord, LeaveRecord, RewardRecord
 from ..myGlobals import *
 
 # 创建打卡命令
@@ -131,10 +131,15 @@ async def handle_leave(bot: Bot, event: Event):
     if leave_record and leave_record.leave_count >= leave_limit:
         # 本周请假次数达到上限，检查是否有足够的早鸟卡兑换
         early_bird = session.query(EarlyBirdRecord).filter_by(user_id=user_id).first()
+        # 没有早鸟卡
         if not early_bird or early_bird.count < 2:
-            await leave.send(f"你本周期已经请假{leave_limit}次，无法再请假。")
+            reward = session.query(RewardRecord).filter_by(user_id=user_id).first()
+            if not reward or reward.count < 1:
+                await leave.send(f"你本周期已请假{leave_limit}次，无法再请假。")
+            else:
+                await leave.send(f"你本周期已请假{leave_limit}次，剩余{early_bird.count}张早鸟卡，但有足够奖励次数。发送指令“/奖励请假”，使用1次奖励兑换一次请假。")
         else:
-            await leave.send(f"你本周期已经请假{leave_limit}次，无法再请假，但是你有足够的早鸟卡。发送指令“/兑换请假”，使用2张早鸟卡兑换一次请假。")
+            await leave.send(f"你本周期已请假{leave_limit}次，剩余{early_bird.count}张早鸟卡。发送指令“/兑换请假”，使用2张早鸟卡兑换一次请假。")
     else:
         # 正常请假
         # 首先记录请假时间（特殊checkin）
@@ -213,6 +218,51 @@ async def handle_redeem(bot: Bot, event: Event):
             leave_record.leave_count += 1
 
         early_bird.count -= 2
+        session.commit()
+        await redeem_early_bird.send(f"兑换成功！你本周期已经请假 {leave_record.leave_count} 次。")
+
+    session.close()
+
+redeem_reward = on_command("奖励请假", aliases={"reward_leave"})
+@redeem_reward.handle()
+async def handle_redeem_reward(bot: Bot, event: Event):
+    session = Session()
+    user_id = event.get_user_id()
+    reward = session.query(RewardRecord).filter_by(user_id=user_id).first()
+    leave_period_start = get_custom_leave_period_start()
+
+    if not reward or reward.count < 1:
+        await redeem_early_bird.send("你没有足够的奖励兑换请假。")
+    else:
+        # 打卡记录
+        checkin_time= get_current_time()
+        print(checkin_time)
+        # 计算打卡时间的开始和结束
+        checkin_time_start,checkin_time_end = get_time_window(checkin_time.date())
+        print(checkin_time_start, checkin_time_end)
+        # 检查用户是否已经在这个时间段内打过卡
+        existing_record = session.query(CheckInRecord).filter(
+            CheckInRecord.user_id == user_id,
+            CheckInRecord.checkin_time >= checkin_time_start,
+            CheckInRecord.checkin_time < checkin_time_end
+        ).first()
+
+        if existing_record:
+            await check_in.send("你今天已经打过卡了。")
+        else:
+            # 插入新的打卡记录
+            new_record = CheckInRecord(user_id=user_id, assignment_id=100, checkin_time = checkin_time)
+            session.add(new_record)
+            session.commit()
+        # 请假记录
+        leave_record = session.query(LeaveRecord).filter_by(user_id=user_id, leave_period_start=leave_period_start).first()
+        if not leave_record:
+            leave_record = LeaveRecord(user_id=user_id, leave_period_start=leave_period_start, leave_count=1)
+            session.add(leave_record)
+        else:
+            leave_record.leave_count += 1
+
+        reward.count -= 1
         session.commit()
         await redeem_early_bird.send(f"兑换成功！你本周期已经请假 {leave_record.leave_count} 次。")
 

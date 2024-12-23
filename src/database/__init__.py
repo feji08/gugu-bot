@@ -19,6 +19,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, unique=True, nullable=False)
     nickname = Column(String, unique=True, nullable=False)
+    cute_name = Column(String, unique=True, nullable=False)
     group_level = Column(Integer, default=0)
 
 # 定义作业类型模型
@@ -59,6 +60,12 @@ class LeaveRecord(Base):
     user_id = Column(String, ForeignKey('users.user_id'), nullable=False)  # 用户 ID
     leave_period_start = Column(DateTime, nullable=False)  # 本周起始时间
     leave_count = Column(Integer, default=0)  # 请假次数
+
+class RewardRecord(Base):
+    __tablename__ = 'reward_records'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey('users.user_id'), nullable=False)
+    count = Column(Integer, default=0)
 
 # 创建所有表（如果表不存在）
 Base.metadata.create_all(engine)
