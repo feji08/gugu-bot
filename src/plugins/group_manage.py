@@ -10,27 +10,9 @@ from ..myGlobals import *
 # 创建管理命令
 send_summary = on_command("发送总结", aliases={"send_summary"})
 
-def get_checkin_day():
-    now = datetime.now()
-    today_Nam = now.replace(hour=time_delay+2, minute=0, second=0, microsecond=0)
-
-    if now >= today_Nam:
-        # 当前时间在18点后，算作后一天
-        checkin_day = now + timedelta(days=1)
-    else:
-        # 当前时间在18点前，算作当天
-        checkin_day = now
-
-    return checkin_day.date()
 def get_custom_leave_period_start():
     # 返回自定义请假周期的起始日期
     return leave_start_date
-def get_week_dates():
-    now = datetime.now()
-    # 计算出本周的起始日期（周日）
-    start_of_week = now - timedelta(days=now.weekday()+1) - timedelta(weeks=1)
-    dates = [start_of_week + timedelta(days=i) for i in range(14)]
-    return dates
 
 async def get_nickname(bot: Bot, user_id: str, group_id: str = None):
     try:
@@ -48,7 +30,7 @@ async def get_nickname(bot: Bot, user_id: str, group_id: str = None):
 @send_summary.handle()
 async def handle_send_summary(bot: Bot, event: Event):
     # 获取当前周的所有日期
-    dates = get_week_dates()
+    dates = get_week_dates(get_current_time())
     session = Session()
     # 获取所有用户的 user_id
     user_ids = session.query(User.user_id).distinct().all()
@@ -63,8 +45,9 @@ async def handle_send_summary(bot: Bot, event: Event):
     summary_data = []
     group_id = event.group_id if hasattr(event, 'group_id') else None
 
-    today_record = {}
-    today = get_checkin_day() - timedelta(days=1)
+    yesterday_record = {}
+    today = get_current_time().date()
+    yesterday = today - timedelta(days=1)
     for user_id in user_ids:
         # 获取用户昵称
         nickname = session.query(User).filter_by(user_id=user_id).first().nickname
@@ -74,34 +57,32 @@ async def handle_send_summary(bot: Bot, event: Event):
 
         for date in dates:
             # 查询这一天的打卡记录
-            start_time = datetime.combine(date, datetime.min.time()) + timedelta(hours=time_delay)
-            end_time = start_time + timedelta(days=1)
+            start_time, end_time = get_time_window(date.date())
             checkin_record = session.query(CheckInRecord).filter(
                 CheckInRecord.user_id == user_id,
                 CheckInRecord.checkin_time >= start_time,
                 CheckInRecord.checkin_time < end_time
             ).first()
-            date = date + timedelta(days=1)
-            date_only = date.date()
 
-            date_record = ''
+            date_assignment = ''
             if checkin_record:
                 assignment_name = session.query(Assignment).filter_by(id=checkin_record.assignment_id).first().name
                 if "练笔" in assignment_name:
                     # print(assignment_name)
-                    date_record = "√输出练笔"
+                    date_assignment = "√输出练笔"
                 elif "请假" in assignment_name:
                     # print(assignment_name)
-                    date_record = "×请假"
+                    date_assignment = "×请假"
                 else:
                     # print(assignment_name)
-                    date_record = "√其他"
+                    date_assignment = "√其他"
 
             # print(date_only)
             # print(today)
-            if date_only == today:
-                today_record[nickname] = date_record
-            user_record[date.strftime("%Y-%m-%d")] = date_record
+            # means it's yesterday's record, newest
+            if end_time.date() == today:
+                yesterday_record[nickname] = date_assignment
+            user_record[date.strftime("%Y-%m-%d")] = date_assignment
 
         leave_period_start = get_custom_leave_period_start()
         # 查询用户的请假次数和早鸟卡数量
@@ -122,10 +103,11 @@ async def handle_send_summary(bot: Bot, event: Event):
 
     from wcwidth import wcswidth
     # 格式化字典内容
-    message_lines = [f"{today.strftime('%Y-%m-%d')}打卡统计："]
-    max_key_width = max(wcswidth(key) for key in today_record.keys())
+    print(yesterday_record)
+    message_lines = [f"{yesterday.strftime('%Y-%m-%d')}打卡统计："]
+    max_key_width = max(wcswidth(key) for key in yesterday_record.keys())
 
-    for key, value in today_record.items():
+    for key, value in yesterday_record.items():
         # 计算每个键的实际填充宽度
         current_width = wcswidth(key)
         full_spaces_needed = max_key_width - current_width
