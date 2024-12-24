@@ -28,7 +28,7 @@ def get_week_range(current_time):
     end_of_week = start_of_week + timedelta(days=7)
     return start_of_week, end_of_week
 
-# print(get_week_range(get_current_time()))
+print(get_week_range(get_current_time()))
 
 # 定义随机前缀列表
 SPY_PREFIXES = [
@@ -36,8 +36,9 @@ SPY_PREFIXES = [
     "坏咕！你偷偷潜入数据库看了一眼，瞄见",
     "悄悄告诉你，",
     "千辛万苦把原著cp拆开后，你终于发现，",
+    "做了一千年无限流BOSS，无聊至极的你决定偷看，发现"
     "一天的辛苦码字后，你闲来无事，发现",
-    "坏咕偷偷看了一页设定卡，显示：",
+    "坏咕偷偷看了一页设定，显示：",
     "坏咕！发现了一个惊天秘密，",
     "卧槽！",
     "坏咕被抓包了！但临走前偷看了一眼，",

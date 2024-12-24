@@ -90,7 +90,7 @@ async def handle_check_in(bot: Bot, event: Event):
 
         # 查询当天唯一记录是否属于指定用户
         record = session.query(CheckInRecord).filter(
-            CheckInRecord.checkin_time == checkin_time,
+            func.date(CheckInRecord.checkin_time) == checkin_time.date(),
             CheckInRecord.assignment_id != 100  # 排除特殊记录
         ).first()
 
@@ -137,9 +137,9 @@ async def handle_leave(bot: Bot, event: Event):
             if not reward or reward.count < 1:
                 await leave.send(f"你本周期已请假{leave_limit}次，无法再请假。")
             else:
-                await leave.send(f"你本周期已请假{leave_limit}次，剩余{early_bird.count}张早鸟卡，但有足够奖励次数。发送指令“/奖励请假”，使用1次奖励兑换一次请假。")
+                await leave.send(f"你本周期已请假{leave_limit}次，剩余早鸟卡不足，但有奖励次数。发送指令“/奖励请假”，使用1次奖励兑换一次请假。")
         else:
-            await leave.send(f"你本周期已请假{leave_limit}次，剩余{early_bird.count}张早鸟卡。发送指令“/兑换请假”，使用2张早鸟卡兑换一次请假。")
+            await leave.send(f"你本周期已请假{leave_limit}次，剩余早鸟卡充足。发送指令“/兑换请假”，使用2张早鸟卡兑换一次请假。")
     else:
         # 正常请假
         # 首先记录请假时间（特殊checkin）
