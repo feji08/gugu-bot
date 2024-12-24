@@ -70,6 +70,12 @@ async def handle_send_summary(bot: Bot, event: Event):
                 if "练笔" in assignment_name:
                     # print(assignment_name)
                     date_assignment = "√输出练笔"
+                elif "摘抄" in assignment_name:
+                    # print(assignment_name)
+                    date_assignment = "√摘抄作业"
+                elif "节奏" in assignment_name:
+                    # print(assignment_name)
+                    date_assignment = "√节奏练习"
                 elif "请假" in assignment_name:
                     # print(assignment_name)
                     date_assignment = "×请假"
