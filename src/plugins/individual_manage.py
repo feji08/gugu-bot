@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from ..myGlobals import *
 
 # 创建周总结命令
-week_summary = on_command("周总结", aliases={"week_summary"})
+week_summary = on_command("周总结（本人）", aliases={"week_summary"})
 
 def get_custom_leave_period_start():
     # 返回自定义请假周期的起始日期

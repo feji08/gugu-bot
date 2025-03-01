@@ -78,9 +78,9 @@ async def handle_first_receive(bot: Bot, event: Event):
     plt.show()
 
     print(f"图片已保存到: {save_path}")
+    await ping.send("周总结（全体）已生成，图片正在赶来的路上，请耐心等候~")
 
     file_message = MessageSegment.file_image(save_path)
-    print(file_message)
     # 发送消息
     await ping.send("咕咕咕咕咕咕咕" + file_message)
 
