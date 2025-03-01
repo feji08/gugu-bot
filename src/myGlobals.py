@@ -9,13 +9,19 @@ def get_time_window(current_day):
     time_start = datetime.combine(current_day, datetime.min.time(), tzinfo=time_zone)
     time_end = time_start + timedelta(hours=24)
     return time_start, time_end
+# def get_week_dates(current_time):
+#     # 为确保有昨天数据，计算上周一的日期 now.weekday() 0-6表示周一到周日
+#     today = datetime.combine(current_time.date(), datetime.min.time(), tzinfo=time_zone)
+#     start_of_last_week = today - timedelta(days=today.weekday()+7)
+#     # 生成从上周一到今天的日期
+#     dates = [start_of_last_week + timedelta(days=i)
+#              for i in range((current_time - start_of_last_week).days + 1)]
+#     return dates
+
 def get_week_dates(current_time):
     # 为确保有昨天数据，计算上周一的日期 now.weekday() 0-6表示周一到周日
     today = datetime.combine(current_time.date(), datetime.min.time(), tzinfo=time_zone)
-    start_of_last_week = today - timedelta(days=today.weekday()+7)
-    # 生成从上周一到今天的日期
-    dates = [start_of_last_week + timedelta(days=i)
-             for i in range((current_time - start_of_last_week).days + 1)]
+    dates = [today - timedelta(days=i) for i in range(6, -1, -1)]
     return dates
 
 # print(get_week_dates(get_current_time()))
