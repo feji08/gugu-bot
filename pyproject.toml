@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.8, <4.0"
 
 [tool.nonebot]
+driver = "~fastapi+~httpx"
 adapters = [
     { name = "QQ", module_name = "nonebot.adapters.qq" }
 ]
