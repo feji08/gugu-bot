@@ -24,6 +24,17 @@ def get_week_dates(current_time):
     dates = [today - timedelta(days=i) for i in range(6, -1, -1)]
     return dates
 
+def get_cycle_dates(current_time):
+    # 为确保有昨天数据，计算上周一的日期 now.weekday() 0-6表示周一到周日
+    today = datetime.combine(current_time.date(), datetime.min.time(), tzinfo=time_zone)
+    dates = []
+    # 从 start_date 开始循环到 yesterday
+    current_date = leave_start_date
+    while current_date <= today:
+        dates.append(current_date)
+        current_date += timedelta(days=1)
+    return dates
+
 # print(get_week_dates(get_current_time()))
 
 def get_week_range(current_time):
@@ -55,6 +66,12 @@ SPY_PREFIXES = [
     "咕咕深夜赶稿后悄悄查到，"
 ]
 
-leave_limit = 3
-leave_start_date = datetime(2024, 12, 2)  # 请假周期从2024年9月2日开始
-leave_end_date = datetime(2024, 12, 29  )  # 请假周期到2024年9月29日结束
+leave_limit = 1
+leave_start_date = datetime(2025, 12, 1, tzinfo=time_zone)  # 请假周期从2024年9月2日开始
+leave_end_date = datetime(2025, 12, 28, tzinfo=time_zone)  # 请假周期到2024年9月29日结束
+
+# leave_start_date = datetime(2025, 3, 3, tzinfo=time_zone)  # 请假周期从2024年9月2日开始
+# leave_end_date = datetime(2025, 3, 30, tzinfo=time_zone)  # 请假周期到2024年9月29日结束
+
+rest_start_date = datetime(2025, 12, 29, tzinfo=time_zone)
+rest_end_date = datetime(2026, 1, 4, tzinfo=time_zone)
