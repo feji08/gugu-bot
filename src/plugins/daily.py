@@ -96,7 +96,19 @@ async def handle_check_in(bot: Bot, event: Event):
 
         print(record)
 
-        if record_count == 1 and record.user_id == user_id:
+        # 公休奖励
+        checkin_time_naive = checkin_time.replace(tzinfo=None)
+        if not "摘抄" in assignment.name and datetime.combine(rest_start_date, datetime.min.time()) < checkin_time_naive <= datetime.combine(rest_end_date, datetime.max.time()):
+            # 给用户加一张早鸟卡
+            early_bird = session.query(EarlyBirdRecord).filter_by(user_id=user_id).first()
+            if not early_bird:
+                early_bird = EarlyBirdRecord(user_id=user_id, count=1)
+                session.add(early_bird)
+            else:
+                early_bird.count += 1
+            await check_in.send(f"打卡成功！你在 {checkin_time.date()} 打卡了作业：{assignment.name}。公休日打卡获得一张早鸟卡！")
+
+        elif record_count == 1 and record.user_id == user_id:
             # 给用户加一张早鸟卡
             early_bird = session.query(EarlyBirdRecord).filter_by(user_id=user_id).first()
             if not early_bird:
@@ -209,17 +221,17 @@ async def handle_redeem(bot: Bot, event: Event):
             new_record = CheckInRecord(user_id=user_id, assignment_id=100, checkin_time = checkin_time)
             session.add(new_record)
             session.commit()
-        # 请假记录
-        leave_record = session.query(LeaveRecord).filter_by(user_id=user_id, leave_period_start=leave_period_start).first()
-        if not leave_record:
-            leave_record = LeaveRecord(user_id=user_id, leave_period_start=leave_period_start, leave_count=1)
-            session.add(leave_record)
-        else:
-            leave_record.leave_count += 1
+            # 请假记录
+            leave_record = session.query(LeaveRecord).filter_by(user_id=user_id, leave_period_start=leave_period_start).first()
+            if not leave_record:
+                leave_record = LeaveRecord(user_id=user_id, leave_period_start=leave_period_start, leave_count=1)
+                session.add(leave_record)
+            else:
+                leave_record.leave_count += 1
 
-        early_bird.count -= 2
-        session.commit()
-        await redeem_early_bird.send(f"兑换成功！你本周期已经请假 {leave_record.leave_count} 次。")
+            early_bird.count -= 2
+            session.commit()
+            await redeem_early_bird.send(f"兑换成功！你本周期已经请假 {leave_record.leave_count} 次。")
 
     session.close()
 

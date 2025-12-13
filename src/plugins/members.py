@@ -1,6 +1,6 @@
 from nonebot import on_command
 from nonebot.adapters.qq import Bot, Event  # 使用 nonebot.adapters.qq 适配器
-from ..database import Session, User, CheckInRecord, EarlyBirdRecord, LeaveRecord
+from ..database import Session, User, CheckInRecord, EarlyBirdRecord, LeaveRecord, RewardRecord
 from sqlalchemy.exc import IntegrityError
 from nonebot.adapters.onebot.v11 import Message
 from nonebot.params import CommandArg
@@ -16,7 +16,7 @@ async def handle_first_receive(bot: Bot, event: Event):
     if existing_user:
         await new_member.send("不要调皮，你已经不是新咕啦~~~~~")
     else:
-        await new_member.send(f"欢迎新咕！请再次@本咕并输入你选择的昵称，示例：【@无情的打卡咕-测试中 煤油礼帽】。")
+        await new_member.send(f"欢迎新咕！请再次@本咕并输入你选择的昵称，示例：【@无情的打卡咕-测试中 帽帽】。")
     session.close()
 
 @new_member.receive()
@@ -64,6 +64,7 @@ async def receive_remove_member(bot: Bot, event: Event):
         session.query(CheckInRecord).filter(CheckInRecord.user_id == user_to_remove.user_id).delete()
         session.query(EarlyBirdRecord).filter(EarlyBirdRecord.user_id == user_to_remove.user_id).delete()
         session.query(LeaveRecord).filter(LeaveRecord.user_id == user_to_remove.user_id).delete()
+        session.query(RewardRecord).filter(RewardRecord.user_id == user_to_remove.user_id).delete()
         # 删除用户记录
         session.query(User).filter(User.user_id == user_to_remove.user_id).delete()
 
