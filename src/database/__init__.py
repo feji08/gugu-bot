@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
 # 使用绝对路径
-db_path = Path(__file__).parent / "gugu.db"
+db_path = Path(__file__).parent / "gugu-B.db"
 engine = create_engine(f'sqlite:///{db_path}', echo=False)
 
 # 创建一个基类
@@ -19,7 +19,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, unique=True, nullable=False)
     nickname = Column(String, unique=True, nullable=False)
-    cute_name = Column(String, unique=True, nullable=False)
+    cute_name = Column(String, unique=True, nullable=True)
     group_level = Column(Integer, default=0)
 
 # 定义作业类型模型
