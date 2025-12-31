@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
 # 使用绝对路径
-db_path = Path(__file__).parent / "gugu-B.db"
+db_path = Path(__file__).parent / "gugu.db"
 engine = create_engine(f'sqlite:///{db_path}', echo=False)
 
 # 创建一个基类

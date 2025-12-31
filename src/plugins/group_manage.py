@@ -7,9 +7,9 @@ from ..database import Session, User, Assignment, CheckInRecord, EarlyBirdRecord
 from datetime import datetime, timedelta
 from ..myGlobals import *
 import matplotlib.pyplot as plt
+plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False
 from pathlib import Path
-# 设置 Matplotlib 字体，确保支持中文
-plt.rcParams["font.family"] = ["SimHei"]  # Windows 用户
 
 # 创建管理命令
 send_summary = on_command("周总结", aliases={"send_summary"})
@@ -158,7 +158,7 @@ async def handle_send_summary(bot: Bot, event: Event):
 
     colors = highlight_early_bird(df, early_bird_matrix)
 
-    fig, ax = plt.subplots(figsize=(2+0.5*len(dates), 0.5+0.5*len(user_ids)))
+    fig, ax = plt.subplots(figsize=(2+0.6*len(dates), 0.5+0.5*len(user_ids)))
     ax.axis('off')  # 隐藏坐标轴
 
     table = ax.table(
@@ -313,7 +313,7 @@ async def handle_send_all_summary(bot: Bot, event: Event):
 
     colors = highlight_early_bird(df, early_bird_matrix)
 
-    fig, ax = plt.subplots(figsize=(2+0.5*len(dates), 0.5+0.5*len(user_ids)))
+    fig, ax = plt.subplots(figsize=(2+0.6*len(dates), 0.5+0.5*len(user_ids)))
     ax.axis('off')  # 隐藏坐标轴
 
     table = ax.table(
