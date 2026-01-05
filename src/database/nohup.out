@@ -1,0 +1,44 @@
+ * Serving Flask app 'sqlite_web.sqlite_web'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8080
+ * Running on http://172.31.13.5:8080
+Press CTRL+C to quit
+ * Serving Flask app 'sqlite_web.sqlite_web'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8080
+ * Running on http://172.31.13.5:8080
+Press CTRL+C to quit
+ * Serving Flask app 'sqlite_web.sqlite_web'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8080
+ * Running on http://172.31.13.5:8080
+Press CTRL+C to quit
+ * Serving Flask app 'sqlite_web.sqlite_web'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8080
+ * Running on http://172.31.13.5:8080
+Press CTRL+C to quit
+ * Serving Flask app 'sqlite_web.sqlite_web'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8888
+ * Running on http://172.31.13.5:8888
+Press CTRL+C to quit
+127.0.0.1 - - [27/Dec/2025 18:25:19] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [27/Dec/2025 18:25:19] "GET /static/css/bootstrap.min.css HTTP/1.1" 200 -
+127.0.0.1 - - [27/Dec/2025 18:25:20] "GET /static/css/syntax-highlight.css HTTP/1.1" 200 -
+127.0.0.1 - - [27/Dec/2025 18:25:20] "GET /static/css/sqlbrowse.css HTTP/1.1" 200 -
+127.0.0.1 - - [27/Dec/2025 18:25:20] "GET /static/js/jquery-1.11.0.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [27/Dec/2025 18:25:20] "GET /static/js/bootstrap.bundle.min.js HTTP/1.1" 200 -
+127.0.0.1 - - [27/Dec/2025 18:25:20] "GET /static/js/app.js HTTP/1.1" 200 -
+127.0.0.1 - - [27/Dec/2025 18:25:21] "GET /favicon.ico HTTP/1.1" 308 -
+127.0.0.1 - - [27/Dec/2025 18:25:21] "GET /favicon.ico/ HTTP/1.1" 404 -
