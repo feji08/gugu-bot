@@ -7,10 +7,12 @@ from ..database import Session, User, Assignment, CheckInRecord, EarlyBirdRecord
 from datetime import datetime, timedelta
 from ..myGlobals import get_current_time, get_time_window, get_week_dates, get_cycle_dates, get_week_range
 from ..config import config
+import matplotlib
 import matplotlib.pyplot as plt
-plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'DejaVu Sans']
-# plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
-plt.rcParams['axes.unicode_minus'] = False
+matplotlib.rcParams['font.sans-serif'] = {
+    'Windows': ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS'],
+}.get(__import__('platform').system(), ['WenQuanYi Zen Hei', 'DejaVu Sans'])
+matplotlib.rcParams['axes.unicode_minus'] = False
 from pathlib import Path
 
 # 创建管理命令
