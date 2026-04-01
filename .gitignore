@@ -173,3 +173,11 @@ __pycache__/
 *.csv
 *.xlsx
 *.xls
+
+# 项目敏感/本地文件
+.env.prod
+.env.secret
+.idea/
+nohup.out
+src/database/*.db
+src/database/config.json
