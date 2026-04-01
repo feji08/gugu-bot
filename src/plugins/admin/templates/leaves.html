@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}请假/卡/奖励{% endblock %}
+{% block content %}
+{% if msg %}<div class="msg msg-success">{{ msg }}{% if request.query_params.get('undo') %} <a href="{{ request.query_params.get('undo') }}" style="text-decoration:underline;color:#155724;">撤销</a>{% endif %}</div>{% endif %}
+<div class="card">
+  <h2>请假记录 — 当前周期 {{ current_cycle }}</h2>
+  <table>
+    <thead><tr><th>ID</th><th>用户</th><th>请假次数</th><th>操作</th></tr></thead>
+    <tbody>
+    {% for r in leave_records %}
+      <tr>
+        <form method="post" action="/admin/leaves/{{ r.id }}/edit">
+          <td>{{ r.id }}</td>
+          <td>{{ r.nickname }}</td>
+          <td><input name="leave_count" type="number" value="{{ r.leave_count }}" style="width:60px"></td>
+          <td><button type="submit" class="btn btn-primary">保存</button></td>
+        </form>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>早鸟卡</h2>
+  <table>
+    <thead><tr><th>ID</th><th>用户</th><th>数量</th><th>操作</th></tr></thead>
+    <tbody>
+    {% for r in early_bird_records %}
+      <tr>
+        <form method="post" action="/admin/earlybirds/{{ r.id }}/edit">
+          <td>{{ r.id }}</td>
+          <td>{{ r.nickname }}</td>
+          <td><input name="count" type="number" value="{{ r.count }}" style="width:60px"></td>
+          <td><button type="submit" class="btn btn-primary">保存</button></td>
+        </form>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>奖励</h2>
+  <table>
+    <thead><tr><th>ID</th><th>用户</th><th>数量</th><th>操作</th></tr></thead>
+    <tbody>
+    {% for r in reward_records %}
+      <tr>
+        <form method="post" action="/admin/rewards/{{ r.id }}/edit">
+          <td>{{ r.id }}</td>
+          <td>{{ r.nickname }}</td>
+          <td><input name="count" type="number" value="{{ r.count }}" style="width:60px"></td>
+          <td><button type="submit" class="btn btn-primary">保存</button></td>
+        </form>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

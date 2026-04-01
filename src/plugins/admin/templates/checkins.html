@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}打卡记录{% endblock %}
+{% block content %}
+{% if msg %}<div class="msg msg-success">{{ msg }}{% if request.query_params.get('undo') %} <a href="{{ request.query_params.get('undo') }}" style="text-decoration:underline;color:#155724;">撤销</a>{% endif %}</div>{% endif %}
+<div class="card" style="margin-bottom:16px;">
+  <h2>补录打卡</h2>
+  <form method="post" action="/admin/checkins/add" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
+    <div class="form-group" style="margin-bottom:0">
+      <label>用户</label>
+      <select name="user_id">
+        {% for u in users %}<option value="{{ u.user_id }}">{{ u.nickname }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label>类型</label>
+      <select name="assignment_id">
+        {% for a in assignments %}<option value="{{ a.id }}" {{ 'selected' if a.id == 1 }}>{{ a.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label>日期</label>
+      <input type="date" name="checkin_date" value="{{ today }}">
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <label>时间</label>
+      <select name="checkin_hour">
+        <option value="9">09:00</option>
+        <option value="12">12:00</option>
+        <option value="15">15:00</option>
+        <option value="18">18:00</option>
+        <option value="21" selected>21:00</option>
+        <option value="23">23:00</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-success">新增</button>
+  </form>
+</div>
+<div class="card">
+  <h2>打卡记录</h2>
+  <div style="margin-bottom:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+    <span>排序：</span>
+    {% if sort == 'time_asc' %}
+      <a href="/admin/checkins?sort=time_desc&date={{ date }}" class="btn btn-primary">时间 ↑</a>
+    {% else %}
+      <a href="/admin/checkins?sort=time_asc&date={{ date }}" class="btn {{ 'btn-primary' if sort == 'time_desc' else 'btn-success' }}">时间 ↓</a>
+    {% endif %}
+    {% if sort == 'name_asc' %}
+      <a href="/admin/checkins?sort=name_desc&date={{ date }}" class="btn btn-primary">昵称 A→Z</a>
+    {% else %}
+      <a href="/admin/checkins?sort=name_asc&date={{ date }}" class="btn {{ 'btn-primary' if sort == 'name_desc' else 'btn-success' }}">昵称 Z→A</a>
+    {% endif %}
+    <span style="margin-left:12px;">筛选日期：</span>
+    <select onchange="location.href='/admin/checkins?sort={{ sort }}&date='+this.value">
+      <option value="">全部</option>
+      {% for d in available_dates %}
+        <option value="{{ d }}" {{ 'selected' if d == date }}>{{ d }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <table>
+    <thead>
+      <tr><th>ID</th><th>用户</th><th>作业类型</th><th>打卡时间</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+    {% for r in records %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.nickname }}</td>
+        <td>{{ r.assignment_name }}</td>
+        <td>{{ r.checkin_time }}</td>
+        <td><a href="/admin/checkins/{{ r.id }}/delete" class="btn btn-danger" onclick="return confirm('确定删除？')">删除</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

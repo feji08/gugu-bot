@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}用户管理{% endblock %}
+{% block content %}
+{% if msg %}<div class="msg msg-success">{{ msg }}</div>{% endif %}
+<div class="card">
+  <h2>用户列表</h2>
+  <table>
+    <thead>
+      <tr><th>ID</th><th>user_id</th><th>昵称</th><th>等级</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <form method="post" action="/admin/users/{{ u.id }}/edit">
+          <td>{{ u.id }}</td>
+          <td>{{ u.user_id }}</td>
+          <td><input name="nickname" value="{{ u.nickname }}" style="width:80px"></td>
+          <td>
+            <select name="group_level">
+              <option value="0" {{ 'selected' if u.group_level == 0 }}>新人</option>
+              <option value="1" {{ 'selected' if u.group_level == 1 }}>进阶</option>
+              <option value="2" {{ 'selected' if u.group_level == 2 }}>高阶</option>
+            </select>
+          </td>
+          <td>
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="/admin/users/{{ u.id }}/delete" class="btn btn-danger" onclick="return confirm('确定删除？会同时删除该用户所有记录')">删除</a>
+          </td>
+        </form>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

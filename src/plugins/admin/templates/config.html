@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}配置管理{% endblock %}
+{% block content %}
+{% if msg %}<div class="msg msg-success">{{ msg }}</div>{% endif %}
+<div class="card">
+  <h2>考勤配置</h2>
+  <form method="post" action="/admin/config">
+    <div class="form-group">
+      <label>考勤周期开始</label>
+      <input type="date" name="cycle_start" value="{{ config.cycle_start.strftime('%Y-%m-%d') }}">
+    </div>
+    <div class="form-group">
+      <label>考勤周期结束</label>
+      <input type="date" name="cycle_end" value="{{ config.cycle_end.strftime('%Y-%m-%d') }}">
+    </div>
+    <div class="form-group">
+      <label>公休开始</label>
+      <input type="date" id="holiday_start" name="holiday_start" value="{{ config.holiday_start.strftime('%Y-%m-%d') }}">
+    </div>
+    <div class="form-group">
+      <label>公休结束</label>
+      <input type="date" id="holiday_end" name="holiday_end" value="{{ config.holiday_end.strftime('%Y-%m-%d') }}">
+      <button type="button" class="btn btn-danger" style="margin-left:8px" onclick="document.getElementById('holiday_start').value='2000-01-01';document.getElementById('holiday_end').value='2000-01-01';">无公休</button>
+    </div>
+    <div class="form-group">
+      <label>请假上限（0 = 不允许请假）</label>
+      <input type="number" name="leave_limit" value="{{ config.leave_limit }}" min="0">
+    </div>
+    <button type="submit" class="btn btn-success">保存配置</button>
+  </form>
+</div>
+{% endblock %}
