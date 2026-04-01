@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from .config import config
 
 time_zone = ZoneInfo("Asia/Shanghai")
 def get_current_time():
@@ -29,7 +30,7 @@ def get_cycle_dates(current_time):
     today = datetime.combine(current_time.date(), datetime.min.time(), tzinfo=time_zone)
     dates = []
     # 从 start_date 开始循环到 yesterday
-    current_date = leave_start_date
+    current_date = config.cycle_start
     while current_date <= today:
         dates.append(current_date)
         current_date += timedelta(days=1)
@@ -66,12 +67,4 @@ SPY_PREFIXES = [
     "咕咕深夜赶稿后悄悄查到，"
 ]
 
-leave_limit = 1
-leave_start_date = datetime(2025, 12, 1, tzinfo=time_zone)  # 请假周期从2024年9月2日开始
-leave_end_date = datetime(2025, 12, 28, tzinfo=time_zone)  # 请假周期到2024年9月29日结束
-
-# leave_start_date = datetime(2025, 3, 3, tzinfo=time_zone)  # 请假周期从2024年9月2日开始
-# leave_end_date = datetime(2025, 3, 30, tzinfo=time_zone)  # 请假周期到2024年9月29日结束
-
-rest_start_date = datetime(2025, 12, 29, tzinfo=time_zone)
-rest_end_date = datetime(2026, 1, 4, tzinfo=time_zone)
+# 配置值已迁移到 src/config.py，通过 config 单例访问
