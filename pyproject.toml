@@ -4,12 +4,16 @@ version = "0.1.0"
 description = "gugu-bot"
 readme = "README.md"
 requires-python = ">=3.8, <4.0"
+dependencies = [
+    "nonebot2>=2.4.4",
+    "nonebot-adapter-qq>=1.6.6",
+]
 
 [tool.nonebot]
 driver = "~fastapi+~httpx"
-adapters = [
-    { name = "QQ", module_name = "nonebot.adapters.qq" }
-]
-plugins = []
+host = "127.0.0.1"
+port = 8080
 plugin_dirs = ["src/plugins"]
 builtin_plugins = ["echo", "single_session"]
+plugins = []
+adapters = [{name = "QQ", module_name = "nonebot.adapters.qq"}]
