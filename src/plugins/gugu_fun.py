@@ -18,9 +18,12 @@ async def handle_first_receive(bot: Bot, event: Event):
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    # 设置 Matplotlib 字体，确保支持中文
-    plt.rcParams["font.family"] = ["SimHei"]  # Windows 用户
-    # plt.rcParams["font.family"] = ["Arial Unicode MS"]  # Mac 用户
+    # 设置 Matplotlib 字体，确保支持中文（按平台自动选择）
+    import platform
+    plt.rcParams["font.sans-serif"] = {
+        'Windows': ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS'],
+    }.get(platform.system(), ['WenQuanYi Zen Hei', 'DejaVu Sans'])
+    plt.rcParams['axes.unicode_minus'] = False
 
     # 模拟从数据库导出的打卡记录
     data = {
