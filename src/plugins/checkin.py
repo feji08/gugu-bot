@@ -44,8 +44,13 @@ async def handle_first_receive(bot: Bot, event: Event):
         await check_in.send("你今天已经打过卡了。")
     else:
         show = [a for a in assignments if a.id != 100]
-        # 每个作业一个回调按钮 + 取消；权限锁定=只有触发人能点
-        perm = Permission(type=0, specify_user_ids=[user_id])
+        # 权限锁触发人:把该用户所有 openid 口径全塞进 specify_user_ids，QQ 用哪个校验都能 match；
+        # 别人的 id 都不在名单里，锁照样成立
+        _a = getattr(event, "author", None)
+        _ids = [getattr(_a, k, None) for k in ("member_openid", "union_openid", "id", "user_openid")]
+        _ids.append(event.get_user_id())
+        _ids = [x for x in dict.fromkeys(_ids) if x]
+        perm = Permission(type=0, specify_user_ids=_ids)
         buttons = [Button(id=str(a.id), render_data=RenderData(label=a.name),
                           action=Action(type=1, permission=perm, data=f"checkin:{a.id}"))
                    for a in show]
