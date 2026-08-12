@@ -1,7 +1,11 @@
 from datetime import datetime
 from sqlalchemy import func
-from nonebot import on_command
-from nonebot.adapters.qq import Bot, Event
+from nonebot import on_command, on_type
+from nonebot.adapters.qq import Bot, Event, MessageSegment
+from nonebot.adapters.qq.event import InteractionCreateEvent
+from nonebot.adapters.qq.models import (
+    MessageKeyboard, InlineKeyboard, InlineKeyboardRow, Button, RenderData, Action, Permission,
+)
 from ..database import Session, Assignment, CheckInRecord, EarlyBirdRecord, LeaveRecord, RewardRecord
 from ..myGlobals import get_current_time, get_time_window
 from ..config import config
@@ -26,14 +30,9 @@ async def handle_first_receive(bot: Bot, event: Event):
         await check_in.send("目前没有可用的作业类型。")
         session.close()
         return
-        # 获取用户的 user_id
     user_id = event.get_user_id()
-    print(user_id)
     checkin_time = get_current_time()
-    print(checkin_time)
-    # 计算打卡时间的开始和结束
-    checkin_time_start,checkin_time_end = get_time_window(checkin_time.date())
-    print(checkin_time_start, checkin_time_end)
+    checkin_time_start, checkin_time_end = get_time_window(checkin_time.date())
     # 检查用户是否已经在这个时间段内打过卡
     existing_record = session.query(CheckInRecord).filter(
         CheckInRecord.user_id == user_id,
@@ -44,41 +43,60 @@ async def handle_first_receive(bot: Bot, event: Event):
     if existing_record:
         await check_in.send("你今天已经打过卡了。")
     else:
-        # 显示作业类型选项
-        assignment_options = "\n".join([f"{i+1}. {a.name}" for i, a in enumerate(assignments) if a.id != 100])
-        await check_in.send(f"请选择你要打卡的作业类型，输入对应的数字：\n{assignment_options}")
+        show = [a for a in assignments if a.id != 100]
+        options = "\n".join(f"{i+1}. {a.name}" for i, a in enumerate(show))
+        # 每个作业一个回调按钮 + 取消；权限锁定=只有触发人能点
+        perm = Permission(type=0, specify_user_ids=[user_id])
+        buttons = [Button(id=str(a.id), render_data=RenderData(label=a.name),
+                          action=Action(type=1, permission=perm, data=f"checkin:{a.id}"))
+                   for a in show]
+        buttons.append(Button(id="cancel", render_data=RenderData(label="取消"),
+                              action=Action(type=1, permission=perm, data="checkin:cancel")))
+        # 一行三个
+        rows = [InlineKeyboardRow(buttons=buttons[i:i + 3]) for i in range(0, len(buttons), 3)]
+        kb = MessageKeyboard(content=InlineKeyboard(rows=rows))
+        # keyboard 必须挂 markdown 消息(纯文本会被拒 40034011)
+        md = MessageSegment.markdown(f"请选择你要打卡的作业类型，点击对应的按钮：\n{options}")
+        await check_in.send(md + MessageSegment.keyboard(kb))
     session.close()
-@check_in.receive()
-async def handle_check_in(bot: Bot, event: Event):
-    session = Session()
-    # 获取用户输入的编号
-    user_input = event.get_plaintext().strip()
-    if not user_input.isdigit():
-        await check_in.reject("无效的输入，请输入数字。")
-    assignment_index = int(user_input) - 1
-    # 重新查询所有作业类型
-    assignments = session.query(Assignment).all()
-    if assignment_index < 0 or assignment_index >= len(assignments):
-        await check_in.reject("无效的选项，请输入正确的编号。")
-    assignment = assignments[assignment_index]
-    # 获取用户的 user_id
-    user_id = event.get_user_id()
-    print(user_id)
-    checkin_time = get_current_time()
-    print(checkin_time)
-    # 计算打卡时间的开始和结束
-    checkin_time_start,checkin_time_end = get_time_window(checkin_time.date())
-    print(checkin_time_start, checkin_time_end)
-    # 检查用户是否已经在这个时间段内打过卡
-    existing_record = session.query(CheckInRecord).filter(
-        CheckInRecord.user_id == user_id,
-        CheckInRecord.checkin_time >= checkin_time_start,
-        CheckInRecord.checkin_time < checkin_time_end
-    ).first()
 
-    if existing_record:
-        await check_in.send("你今天已经打过卡了。")
-    else:
+
+# 打卡按钮回调:点作业类型 → 记录；点取消 → 取消
+checkin_cb = on_type(InteractionCreateEvent, priority=5, block=True)
+
+@checkin_cb.handle()
+async def handle_checkin_button(bot: Bot, event: InteractionCreateEvent):
+    data = event.data.resolved.button_data or ""
+    if not data.startswith("checkin:"):
+        return  # 非打卡按钮，放行
+    iid = event.id
+    user_id = event.get_user_id()          # 群场景=group_member_openid，与打卡记录一致
+    group_openid = event.group_openid
+    choice = data.split(":", 1)[1]
+
+    if choice == "cancel":
+        await bot.put_interaction(interaction_id=iid, code=0)
+        await bot.send_to_group(group_openid=group_openid, message="已取消打卡。", event_id=iid)
+        return
+
+    assignment_id = int(choice)
+    session = Session()
+    try:
+        checkin_time = get_current_time()
+        checkin_time_start, checkin_time_end = get_time_window(checkin_time.date())
+        existing_record = session.query(CheckInRecord).filter(
+            CheckInRecord.user_id == user_id,
+            CheckInRecord.checkin_time >= checkin_time_start,
+            CheckInRecord.checkin_time < checkin_time_end
+        ).first()
+        if existing_record:
+            await bot.put_interaction(interaction_id=iid, code=3)  # 3=重复操作(已打卡)
+            return
+        assignment = session.query(Assignment).filter_by(id=assignment_id).first()
+        if not assignment:
+            await bot.put_interaction(interaction_id=iid, code=1)  # 1=操作失败
+            return
+
         # 插入新的打卡记录
         new_record = CheckInRecord(user_id=user_id, assignment_id=assignment.id, checkin_time=checkin_time)
         session.add(new_record)
@@ -87,43 +105,40 @@ async def handle_check_in(bot: Bot, event: Event):
         # 检查是否是当天第一个打卡的用户
         record_count = session.query(CheckInRecord).filter(
             CheckInRecord.checkin_time == checkin_time,
-            CheckInRecord.assignment_id != 100 ## not leave
+            CheckInRecord.assignment_id != 100  ## not leave
         ).count()
-
-        # 查询当天唯一记录是否属于指定用户
         record = session.query(CheckInRecord).filter(
             func.date(CheckInRecord.checkin_time) == checkin_time.date(),
             CheckInRecord.assignment_id != 100  # 排除特殊记录
         ).first()
 
-        print(record)
-
         # 公休奖励
         checkin_time_naive = checkin_time.replace(tzinfo=None)
         if not "摘抄" in assignment.name and datetime.combine(config.holiday_start, datetime.min.time()) < checkin_time_naive <= datetime.combine(config.holiday_end, datetime.max.time()):
-            # 给用户加一张早鸟卡
             early_bird = session.query(EarlyBirdRecord).filter_by(user_id=user_id).first()
             if not early_bird:
                 early_bird = EarlyBirdRecord(user_id=user_id, count=1)
                 session.add(early_bird)
             else:
                 early_bird.count += 1
-            await check_in.send(f"打卡成功！你在 {checkin_time.date()} 打卡了作业：{assignment.name}。公休日打卡获得一张早鸟卡！")
-
+            msg = f"打卡成功！你在 {checkin_time.date()} 打卡了作业：{assignment.name}。公休日打卡获得一张早鸟卡！"
         elif record_count == 1 and record.user_id == user_id:
-            # 给用户加一张早鸟卡
             early_bird = session.query(EarlyBirdRecord).filter_by(user_id=user_id).first()
             if not early_bird:
                 early_bird = EarlyBirdRecord(user_id=user_id, count=1)
                 session.add(early_bird)
             else:
                 early_bird.count += 1
-            await check_in.send(f"打卡成功！你在 {checkin_time.date()} 打卡了作业：{assignment.name}。你是今天第一个打卡的，获得了一张早鸟卡！")
-
+            msg = f"打卡成功！你在 {checkin_time.date()} 打卡了作业：{assignment.name}。你是今天第一个打卡的，获得了一张早鸟卡！"
         else:
-            await check_in.send(f"打卡成功！你在 {checkin_time.date()} 打卡了作业：{assignment.name}")
+            msg = f"打卡成功！你在 {checkin_time.date()} 打卡了作业：{assignment.name}"
         session.commit()
-    session.close()
+
+        # 先 ack(免按钮转圈)，再发打卡成功(被动消息，带 event_id 不烧主动配额)
+        await bot.put_interaction(interaction_id=iid, code=0)
+        await bot.send_to_group(group_openid=group_openid, message=msg, event_id=iid)
+    finally:
+        session.close()
 
 # 创建请假命令
 leave = on_command("请假", aliases={"leave"})
