@@ -111,14 +111,15 @@ async def handle_first_receive(bot: Bot, event: Event):
     _ids.append(user_id)
     _ids = [x for x in dict.fromkeys(_ids) if x]
     perm = Permission(type=0, specify_user_ids=_ids)
-    buttons = [Button(id=str(a.id), render_data=RenderData(label=a.name),
+    # 按钮标签用数字(1..N)，作业名只在上面列表出现一次、不重复；数字按钮对应列表项
+    buttons = [Button(id=str(a.id), render_data=RenderData(label=str(i + 1)),
                       action=Action(type=1, permission=perm, data=f"checkin:{a.id}"))
-               for a in show]
-    buttons.append(Button(id="cancel", render_data=RenderData(label="取消"),
-                          action=Action(type=1, permission=perm, data="checkin:cancel")))
-    rows = [InlineKeyboardRow(buttons=[b]) for b in buttons]  # 一行一个
+               for i, a in enumerate(show)]
+    rows = [InlineKeyboardRow(buttons=buttons[i:i + 5]) for i in range(0, len(buttons), 5)]
+    rows.append(InlineKeyboardRow(buttons=[Button(id="cancel", render_data=RenderData(label="取消"),
+                                                  action=Action(type=1, permission=perm, data="checkin:cancel"))]))
     kb = MessageKeyboard(content=InlineKeyboard(rows=rows))
-    md = MessageSegment.markdown(f"请选择你要打卡的作业类型（点按钮，或回复对应数字）：\n{options}")
+    md = MessageSegment.markdown(f"请选择你要打卡的作业类型（点数字按钮，或直接回复数字）：\n{options}")
     await check_in.send(md + MessageSegment.keyboard(kb))
 
 
