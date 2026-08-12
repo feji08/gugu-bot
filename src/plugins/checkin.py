@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import func
-from nonebot import on_command, on_type
+from nonebot import on_command, on_type, logger
 from nonebot.adapters.qq import Bot, Event, MessageSegment
 from nonebot.adapters.qq.event import InteractionCreateEvent
 from nonebot.adapters.qq.models import (
@@ -56,13 +56,21 @@ async def handle_first_receive(bot: Bot, event: Event):
                    for a in show]
         buttons.append(Button(id="cancel", render_data=RenderData(label="取消"),
                               action=Action(type=1, permission=perm, data="checkin:cancel")))
-        # 一行三个
-        rows = [InlineKeyboardRow(buttons=buttons[i:i + 3]) for i in range(0, len(buttons), 3)]
+        # 一行一个（群里不挤）
+        rows = [InlineKeyboardRow(buttons=[b]) for b in buttons]
         kb = MessageKeyboard(content=InlineKeyboard(rows=rows))
         # keyboard 必须挂 markdown 消息(纯文本会被拒 40034011)
         md = MessageSegment.markdown("请选择你要打卡的作业类型，点击对应的按钮：")
         await check_in.send(md + MessageSegment.keyboard(kb))
     session.close()
+
+
+async def _reply_group(bot, group_openid, msg):
+    # 群主动消息(需群主开"机器人主动在群聊内发言")；interaction 不能被动回消息，故改主动发。失败不影响打卡已记录
+    try:
+        await bot.send_to_group(group_openid=group_openid, message=msg)
+    except Exception as e:
+        logger.warning(f"[checkin] 群回复失败(可能未开机器人主动发言): {e}")
 
 
 # 打卡按钮回调:点作业类型 → 记录；点取消 → 取消
@@ -80,7 +88,7 @@ async def handle_checkin_button(bot: Bot, event: InteractionCreateEvent):
 
     if choice == "cancel":
         await bot.put_interaction(interaction_id=iid, code=0)
-        await bot.send_to_group(group_openid=group_openid, message="已取消打卡。", event_id=iid)
+        await _reply_group(bot, group_openid, "已取消打卡。")
         return
 
     assignment_id = int(choice)
@@ -138,9 +146,9 @@ async def handle_checkin_button(bot: Bot, event: InteractionCreateEvent):
             msg = f"打卡成功！你在 {checkin_time.date()} 打卡了作业：{assignment.name}"
         session.commit()
 
-        # 先 ack(免按钮转圈)，再发打卡成功(被动消息，带 event_id 不烧主动配额)
+        # 先 ack(免按钮转圈)，再主动发打卡成功(interaction 不能被动回消息)
         await bot.put_interaction(interaction_id=iid, code=0)
-        await bot.send_to_group(group_openid=group_openid, message=msg, event_id=iid)
+        await _reply_group(bot, group_openid, msg)
     finally:
         session.close()
 
