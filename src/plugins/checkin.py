@@ -44,7 +44,6 @@ async def handle_first_receive(bot: Bot, event: Event):
         await check_in.send("你今天已经打过卡了。")
     else:
         show = [a for a in assignments if a.id != 100]
-        options = "\n".join(f"{i+1}. {a.name}" for i, a in enumerate(show))
         # 每个作业一个回调按钮 + 取消；权限锁定=只有触发人能点
         perm = Permission(type=0, specify_user_ids=[user_id])
         buttons = [Button(id=str(a.id), render_data=RenderData(label=a.name),
@@ -56,7 +55,7 @@ async def handle_first_receive(bot: Bot, event: Event):
         rows = [InlineKeyboardRow(buttons=buttons[i:i + 3]) for i in range(0, len(buttons), 3)]
         kb = MessageKeyboard(content=InlineKeyboard(rows=rows))
         # keyboard 必须挂 markdown 消息(纯文本会被拒 40034011)
-        md = MessageSegment.markdown(f"请选择你要打卡的作业类型，点击对应的按钮：\n{options}")
+        md = MessageSegment.markdown("请选择你要打卡的作业类型，点击对应的按钮：")
         await check_in.send(md + MessageSegment.keyboard(kb))
     session.close()
 
