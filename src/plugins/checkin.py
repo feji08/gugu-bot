@@ -7,12 +7,48 @@ from nonebot.adapters.qq.event import InteractionCreateEvent
 from nonebot.adapters.qq.models import (
     MessageKeyboard, InlineKeyboard, InlineKeyboardRow, Button, RenderData, Action, Permission,
 )
-from ..database import Session, Assignment, CheckInRecord, EarlyBirdRecord, LeaveRecord, RewardRecord
+from ..database import (
+    Session, Assignment, CheckInRecord, EarlyBirdRecord, LeaveRecord, RewardRecord,
+    LEAVE_ID, assignment_sort_key,
+)
 from ..myGlobals import get_current_time, get_time_window
 from ..config import config
 
 # 创建打卡命令
 check_in = on_command("打卡", aliases={"checkin"})
+
+# 菜单最多 10 项：位置 1..9、0。正文用全角数字（每个恰占一个汉字位，两列网格才能对齐），按钮/回复用半角。
+MENU_MAX = 10
+FW_DIGITS = "１２３４５６７８９０"
+POS_LABEL = "1234567890"
+_FW2HW = str.maketrans("１２３４５６７８９０", "1234567890")
+
+
+def _pos_label(i: int) -> str:
+    return POS_LABEL[i]  # i=9 → "0"
+
+
+def _pos_index(text: str):
+    """回复文本 → 菜单位置下标(0..9)；不是单个数字（或 10/１０）就返回 None，调用方放行。
+    必须是整串匹配：子串判断会把空串/「12」当成位置 1。"""
+    t = text.strip().translate(_FW2HW)
+    if t == "10":
+        return 9
+    if len(t) == 1 and t in POS_LABEL:
+        return POS_LABEL.index(t)
+    return None
+
+
+def _menu_text(show) -> str:
+    """两列网格：左列位置 1-5、右列 6-9、0。每格 = 全角数字 + 半角空格 + 名字，列间两个全角空格。
+    左列五个 4 字名是对齐基准；右列尾部允许 5 字名（右边没有内容要对齐）。"""
+    left, right = show[:5], show[5:]
+    lines = []
+    for i in range(max(len(left), len(right))):
+        l = f"{FW_DIGITS[i]} {left[i].name}" if i < len(left) else ""
+        r = f"{FW_DIGITS[5 + i]} {right[i].name}" if i < len(right) else ""
+        lines.append(f"{l}　　{r}".rstrip("　"))
+    return "\n".join(lines)
 
 def get_custom_leave_period_start():
     return config.cycle_start
@@ -35,8 +71,11 @@ def _record_checkin(user_id, assignment_id):
         if existing:
             return "dup", "你今天已经打过卡了。"
         assignment = session.query(Assignment).filter_by(id=assignment_id).first()
-        if not assignment:
+        if not assignment or assignment.id == LEAVE_ID:
             return "err", "无效的作业类型。"
+        if not assignment.active:
+            # 群里旧的 /打卡 消息按钮还在，点到已下架的类型不能写库
+            return "err", f"「{assignment.name}」已下架，请重新发 /打卡 选择。"
         session.add(CheckInRecord(user_id=user_id, assignment_id=assignment.id, checkin_time=checkin_time))
         session.commit()
 
@@ -88,11 +127,15 @@ async def _reply_group(bot, group_openid, msg):
 async def handle_first_receive(bot: Bot, event: Event):
     session = Session()
     assignments = session.query(Assignment).all()
-    show = [a for a in assignments if a.id != 100]
+    show = sorted((a for a in assignments if a.id != LEAVE_ID and a.active), key=assignment_sort_key)
     session.close()
     if not show:
         await check_in.send("目前没有可用的作业类型。")
         return
+    if len(show) > MENU_MAX:
+        logger.error(f"[checkin] 上架作业 {len(show)} 项超过菜单上限 {MENU_MAX}，多余的不显示: "
+                     f"{[a.name for a in show[MENU_MAX:]]}")
+        show = show[:MENU_MAX]
 
     user_id = event.get_user_id()
     checkin_time = get_current_time()
@@ -108,23 +151,23 @@ async def handle_first_receive(bot: Bot, event: Event):
         await check_in.send("你今天已经打过卡了。")
         return
 
-    # 数字列表(鸿蒙等无按钮客户端的兜底) + 按钮(能渲染的点)
-    options = "\n".join(f"{i+1}. {a.name}" for i, a in enumerate(show))
+    # 两列数字网格(鸿蒙等无按钮客户端靠回数字) + 按钮(能渲染的点)
+    options = _menu_text(show)
     # 权限锁触发人:把该用户所有 openid 口径都塞进去，QQ 用哪个校验都能 match
     _a = getattr(event, "author", None)
     _ids = [getattr(_a, k, None) for k in ("member_openid", "union_openid", "id", "user_openid")]
     _ids.append(user_id)
     _ids = [x for x in dict.fromkeys(_ids) if x]
     perm = Permission(type=0, specify_user_ids=_ids)
-    # 按钮标签用数字(1..N)，作业名只在上面列表出现一次、不重复；数字按钮对应列表项
-    buttons = [Button(id=str(a.id), render_data=RenderData(label=str(i + 1)),
+    # 按钮标签 = 位置号(1..9、0)，作业名只在上面网格出现一次；每行 5 个 → 12345 / 67890，取消单独一行
+    buttons = [Button(id=str(a.id), render_data=RenderData(label=_pos_label(i)),
                       action=Action(type=1, permission=perm, data=f"checkin:{a.id}"))
                for i, a in enumerate(show)]
     rows = [InlineKeyboardRow(buttons=buttons[i:i + 5]) for i in range(0, len(buttons), 5)]
     rows.append(InlineKeyboardRow(buttons=[Button(id="cancel", render_data=RenderData(label="取消"),
                                                   action=Action(type=1, permission=perm, data="checkin:cancel"))]))
     kb = MessageKeyboard(content=InlineKeyboard(rows=rows))
-    md = MessageSegment.markdown(f"请选择你要打卡的作业类型（点数字按钮，或直接回复数字）：\n{options}")
+    md = MessageSegment.markdown(f"请选择作业类型（点数字按钮，或直接回复数字）：\n{options}")
     _pending[user_id] = (time.time() + _PENDING_TTL, [a.id for a in show])  # 进入待选，数字兜底可用
     await check_in.send(md + MessageSegment.keyboard(kb))
 
@@ -142,11 +185,10 @@ async def handle_check_in_number(bot: Bot, event: Event):
     if time.time() > deadline:
         _pending.pop(user_id, None)
         return
-    text = event.get_plaintext().strip()
-    if not text.isdigit():
-        return  # 不是数字：放行，不吃这条消息，也不结束待选
-    idx = int(text) - 1
-    if idx < 0 or idx >= len(ids):
+    idx = _pos_index(event.get_plaintext())
+    if idx is None:
+        return  # 不是单个位置数字（图片/表情/长串数字都算）：放行，不吃这条消息，也不结束待选
+    if idx >= len(ids):
         return  # 越界：放行
     _pending.pop(user_id, None)  # 数字已用，结束待选
     _, msg = _record_checkin(user_id, ids[idx])
@@ -178,6 +220,7 @@ async def handle_checkin_button(bot: Bot, event: InteractionCreateEvent):
         return
     if status == "err":
         await bot.put_interaction(interaction_id=iid, code=1)  # 操作失败
+        await _reply_group(bot, group_openid, msg)  # 只弹失败 toast 咕咕不知道为什么，把原因说出来
         return
     await bot.put_interaction(interaction_id=iid, code=0)
     await _reply_group(bot, group_openid, msg)

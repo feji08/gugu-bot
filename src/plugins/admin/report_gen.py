@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from ...database import engine
+from ...database import engine, report_display_name
 
 
 def generate_report_xlsx(start_date: datetime, end_date: datetime) -> bytes:
@@ -49,7 +49,8 @@ def generate_report_xlsx(start_date: datetime, end_date: datetime) -> bytes:
                 elif "请假" in str(name):
                     date_record = "请假"
                 else:
-                    date_record = "其他练习"
+                    # 子串分支没命中的（综合六项等）直接用原名，5 字名缩写见 REPORT_SHORT
+                    date_record = report_display_name(name)
 
             result_df.loc[nickname, date.date()] = date_record
 

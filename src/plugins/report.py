@@ -3,7 +3,7 @@ from nonebot import on_command
 from nonebot.adapters.qq import Bot, Event
 from nonebot.adapters.qq.message import MessageSegment
 from nonebot.exception import ActionFailed
-from ..database import Session, User, Assignment, CheckInRecord, EarlyBirdRecord, LeaveRecord, RewardRecord
+from ..database import Session, User, Assignment, CheckInRecord, EarlyBirdRecord, LeaveRecord, RewardRecord, report_display_name
 from datetime import datetime, timedelta
 from ..myGlobals import get_current_time, get_time_window, get_week_dates, get_cycle_dates, get_week_range
 from ..config import config
@@ -98,8 +98,8 @@ async def handle_send_summary(bot: Bot, event: Event):
                     # print(assignment_name)
                     date_assignment = "请假"
                 else:
-                    # print(assignment_name)
-                    date_assignment = "其他练习"
+                    # 子串分支没命中的（综合六项等）直接用原名，5 字名缩写见 REPORT_SHORT
+                    date_assignment = report_display_name(assignment_name)
 
                 # 记录打卡时间
                 checkin_time = checkin_record.checkin_time
@@ -253,8 +253,8 @@ async def handle_send_all_summary(bot: Bot, event: Event):
                     # print(assignment_name)
                     date_assignment = "请假"
                 else:
-                    # print(assignment_name)
-                    date_assignment = "其他练习"
+                    # 子串分支没命中的（综合六项等）直接用原名，5 字名缩写见 REPORT_SHORT
+                    date_assignment = report_display_name(assignment_name)
 
                 # 记录打卡时间
                 checkin_time = checkin_record.checkin_time

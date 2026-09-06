@@ -1,6 +1,9 @@
 from nonebot import on_command
 from nonebot.adapters.qq import Bot, Event
-from ..database import Session, Assignment, CheckInRecord, EarlyBirdRecord, LeaveRecord, RewardRecord
+from ..database import (
+    Session, Assignment, CheckInRecord, EarlyBirdRecord, LeaveRecord, RewardRecord,
+    ASSIGNMENT_ORDER, COMPOSITE_NAMES, COMPOSITE_REQUIRED,
+)
 from datetime import datetime, timedelta
 from ..myGlobals import get_current_time, get_week_range
 from ..config import config
@@ -60,6 +63,15 @@ async def handle_week_summary(bot: Bot, event: Event):
     if records:
         for assignment, count in assignment_counts.items():
             summary_message += f"{assignment}: {count} 次\n"
+
+    # 综合６选３：本周做过的不重样综合类型数（同一类打两次只记 1），只展示不挂奖励
+    done = [n for n in ASSIGNMENT_ORDER if n in COMPOSITE_NAMES and n in assignment_counts]
+    n_done = min(len(done), COMPOSITE_REQUIRED)
+    summary_message += f"\n综合６选３：{n_done}/{COMPOSITE_REQUIRED}{' ✓' if n_done == COMPOSITE_REQUIRED else ''}\n"
+    if done:
+        summary_message += "　已做：" + "、".join(done) + "\n"
+    if n_done < COMPOSITE_REQUIRED:
+        summary_message += f"　还差 {COMPOSITE_REQUIRED - n_done} 个不重样的\n"
 
     summary_message += f"\n本周期请假次数：{leave_count}/{config.leave_limit}次\n"
     summary_message += f"当前早鸟卡：{early_bird_count} 张\n"
