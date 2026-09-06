@@ -100,10 +100,11 @@ def generate_report_xlsx(start_date: datetime, end_date: datetime) -> bytes:
         stats_rows[nickname] = {
             "打卡次数": checkin_count,
             "请假次数": leave_count,
-            "规则奖励": reward,               # = 7天加成 + 14天加成 + 全勤，发奖励抄这个数
-            "7天加成": base_reward,
-            "14天加成": bonus_14,
-            "全勤": "✓" if full_attendance else "",
+            # 奖励算式块：三行分项 + 一行合计，标签带 ＋/＝ 让表上一眼看出是加起来的
+            "　7天加成": base_reward,
+            "＋14天加成": bonus_14,
+            "＋全勤": 1 if full_attendance else 0,
+            "＝规则奖励": reward,             # 发奖励抄这个数
             "输出练笔": practice_count,
             "扒文扒榜": review_count,
         }
@@ -140,8 +141,15 @@ def generate_report_xlsx(start_date: datetime, end_date: datetime) -> bytes:
 
     num_cols = len(user_nicknames) + 1  # A列(日期) + 昵称列
     num_date_rows = len(dates)
-    stats_labels = ["打卡次数", "请假次数", "规则奖励", "7天加成", "14天加成", "全勤", "输出练笔", "扒文扒榜"]  # 须与 stats_rows 键顺序一致
+    stats_labels = ["打卡次数", "请假次数", "　7天加成", "＋14天加成", "＋全勤", "＝规则奖励", "输出练笔", "扒文扒榜"]  # 须与 stats_rows 键顺序一致
     num_stats = len(stats_labels)
+    reward_part_rows = {3 + num_date_rows + stats_labels.index(k) for k in ("　7天加成", "＋14天加成", "＋全勤")}
+    reward_total_row = 3 + num_date_rows + stats_labels.index("＝规则奖励")
+    yellow_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+    sum_border = Border(
+        left=Side(style="thin"), right=Side(style="thin"),
+        top=Side(style="medium"), bottom=Side(style="thin"),   # 合计行上边加粗，像算式底下那道横线
+    )
 
     # 插入大表头行（第1行上方插入一行）
     ws.insert_rows(1)
@@ -182,7 +190,18 @@ def generate_report_xlsx(start_date: datetime, end_date: datetime) -> bytes:
             if row_idx >= 3 + num_date_rows:
                 if col_idx == 1:
                     cell.fill = gray_fill
-                cell.font = bold_font
+                if row_idx in reward_part_rows:
+                    cell.font = Font(bold=False)          # 分项不加粗，衬托合计
+                    if col_idx == 1:
+                        cell.alignment = Alignment(horizontal="left", vertical="center")
+                elif row_idx == reward_total_row:
+                    cell.font = bold_font
+                    cell.fill = yellow_fill               # 合计整行黄底
+                    cell.border = sum_border
+                    if col_idx == 1:
+                        cell.alignment = Alignment(horizontal="left", vertical="center")
+                else:
+                    cell.font = bold_font
 
     # 列宽自适应
     ws.column_dimensions["A"].width = 14
