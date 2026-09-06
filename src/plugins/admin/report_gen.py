@@ -15,6 +15,19 @@ def streak_reward(streak: int) -> int:
     return sum(streak // tier for tier in REWARD_TIERS)
 
 
+def _streak_segments(values):
+    """把一行按天的值切成连续打卡段的长度列表；空/请假为断点。"""
+    segs, streak = [], 0
+    for v in values:
+        if v and v != "请假":
+            streak += 1
+        else:
+            segs.append(streak)
+            streak = 0
+    segs.append(streak)
+    return segs
+
+
 def generate_report_xlsx(start_date: datetime, end_date: datetime) -> bytes:
     query = """
         SELECT
@@ -74,20 +87,23 @@ def generate_report_xlsx(start_date: datetime, end_date: datetime) -> bytes:
         practice_count = sum(1 for v in values if v == "输出练笔")
         review_count = sum(1 for v in values if v == "扒文扒榜")
 
-        reward = 0
-        streak = 0
-        for v in values:
-            if v and v != "请假":
-                streak += 1
-            else:
-                reward += streak_reward(streak)
-                streak = 0
-        reward += streak_reward(streak)
+        # 连续奖励：按段结算，每段 7 天层 + 14 天层（两层定义见 REWARD_TIERS）
+        segments = _streak_segments(values)
+        base_reward = sum(s // REWARD_TIERS[0] for s in segments)   # 7 天层
+        bonus_14 = sum(s // REWARD_TIERS[1] for s in segments)      # 14 天层（额外）
+
+        # 全勤：周期内每天都有打卡且一次假没请，整周期额外 +1（只看没请假不够，一整月没露面的人也没请假）
+        full_attendance = leave_count == 0 and checkin_count == len(values)
+
+        reward = base_reward + bonus_14 + (1 if full_attendance else 0)
 
         stats_rows[nickname] = {
             "打卡次数": checkin_count,
             "请假次数": leave_count,
-            "规则奖励": reward,
+            "规则奖励": reward,               # = 7天加成 + 14天加成 + 全勤，发奖励抄这个数
+            "7天加成": base_reward,
+            "14天加成": bonus_14,
+            "全勤": "✓" if full_attendance else "",
             "输出练笔": practice_count,
             "扒文扒榜": review_count,
         }
@@ -124,7 +140,7 @@ def generate_report_xlsx(start_date: datetime, end_date: datetime) -> bytes:
 
     num_cols = len(user_nicknames) + 1  # A列(日期) + 昵称列
     num_date_rows = len(dates)
-    stats_labels = ["打卡次数", "请假次数", "规则奖励", "输出练笔", "扒文扒榜"]
+    stats_labels = ["打卡次数", "请假次数", "规则奖励", "7天加成", "14天加成", "全勤", "输出练笔", "扒文扒榜"]  # 须与 stats_rows 键顺序一致
     num_stats = len(stats_labels)
 
     # 插入大表头行（第1行上方插入一行）
