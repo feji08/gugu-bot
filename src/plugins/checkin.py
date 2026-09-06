@@ -1,6 +1,7 @@
+import time
 from datetime import datetime
 from sqlalchemy import func
-from nonebot import on_command, on_type, logger
+from nonebot import on_command, on_type, on_message, logger
 from nonebot.adapters.qq import Bot, Event, MessageSegment
 from nonebot.adapters.qq.event import InteractionCreateEvent
 from nonebot.adapters.qq.models import (
@@ -71,12 +72,16 @@ def _record_checkin(user_id, assignment_id):
         session.close()
 
 
+_pending: dict = {}       # user_id -> (deadline_ts, [assignment_id,...])  等待数字打卡（无按钮兜底）
+_PENDING_TTL = 120        # 待选状态存活秒数，超时作废，避免把日后随口一个数字当打卡
+
+
 async def _reply_group(bot, group_openid, msg):
-    # 群主动消息(需群主开"机器人主动在群聊内发言")；interaction 不能被动回消息，故主动发。失败不影响打卡已记录
+    # 主动群消息(群主已开"机器人主动在群聊内发言")；失败不影响打卡已记录
     try:
         await bot.send_to_group(group_openid=group_openid, message=msg)
     except Exception as e:
-        logger.warning(f"[checkin] 群回复失败(可能未开机器人主动发言): {e}")
+        logger.warning(f"[checkin] 群回复失败: {e}")
 
 
 @check_in.handle()
@@ -120,23 +125,32 @@ async def handle_first_receive(bot: Bot, event: Event):
                                                   action=Action(type=1, permission=perm, data="checkin:cancel"))]))
     kb = MessageKeyboard(content=InlineKeyboard(rows=rows))
     md = MessageSegment.markdown(f"请选择你要打卡的作业类型（点数字按钮，或直接回复数字）：\n{options}")
+    _pending[user_id] = (time.time() + _PENDING_TTL, [a.id for a in show])  # 进入待选，数字兜底可用
     await check_in.send(md + MessageSegment.keyboard(kb))
 
 
-@check_in.receive()
+# 无按钮客户端(鸿蒙)的数字兜底：独立监听，不挂起会话。只在“待选中且是有效数字”时消费，其余放行
+checkin_num = on_message(priority=10, block=False)
+
+@checkin_num.handle()
 async def handle_check_in_number(bot: Bot, event: Event):
-    # 无按钮客户端(鸿蒙)的兜底:回复数字打卡
-    user_input = event.get_plaintext().strip()
-    if not user_input.isdigit():
-        await check_in.reject("无效的输入，请回复作业类型对应的数字。")
-    session = Session()
-    show = [a for a in session.query(Assignment).all() if a.id != 100]
-    session.close()
-    idx = int(user_input) - 1
-    if idx < 0 or idx >= len(show):
-        await check_in.reject("无效的编号，请回复正确的数字。")
-    _, msg = _record_checkin(event.get_user_id(), show[idx].id)
-    await check_in.send(msg)
+    user_id = event.get_user_id()
+    p = _pending.get(user_id)
+    if not p:
+        return
+    deadline, ids = p
+    if time.time() > deadline:
+        _pending.pop(user_id, None)
+        return
+    text = event.get_plaintext().strip()
+    if not text.isdigit():
+        return  # 不是数字：放行，不吃这条消息，也不结束待选
+    idx = int(text) - 1
+    if idx < 0 or idx >= len(ids):
+        return  # 越界：放行
+    _pending.pop(user_id, None)  # 数字已用，结束待选
+    _, msg = _record_checkin(user_id, ids[idx])
+    await checkin_num.send(msg)
 
 
 # 打卡按钮回调:点作业类型 → 记录；点取消 → 取消
@@ -152,6 +166,7 @@ async def handle_checkin_button(bot: Bot, event: InteractionCreateEvent):
     group_openid = event.group_openid
     choice = data.split(":", 1)[1]
 
+    _pending.pop(user_id, None)  # 走了按钮，结束数字兜底，别让之后随口的数字再被当打卡
     if choice == "cancel":
         await bot.put_interaction(interaction_id=iid, code=0)
         await _reply_group(bot, group_openid, "已取消打卡。")
