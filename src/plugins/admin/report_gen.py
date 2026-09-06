@@ -6,6 +6,15 @@ from openpyxl.utils import get_column_letter
 from ...database import engine, report_display_name
 
 
+# 连续打卡奖励：同一段连续天数扫两层，每满 7 天记 1，每满 14 天再额外记 1，两层相加。
+# 例：7→1，13→1，14/15→3，21→4，28→6。断档/请假/周期边界都切段，每段独立算。
+REWARD_TIERS = (7, 14)
+
+
+def streak_reward(streak: int) -> int:
+    return sum(streak // tier for tier in REWARD_TIERS)
+
+
 def generate_report_xlsx(start_date: datetime, end_date: datetime) -> bytes:
     query = """
         SELECT
@@ -71,9 +80,9 @@ def generate_report_xlsx(start_date: datetime, end_date: datetime) -> bytes:
             if v and v != "请假":
                 streak += 1
             else:
-                reward += streak // 7
+                reward += streak_reward(streak)
                 streak = 0
-        reward += streak // 7
+        reward += streak_reward(streak)
 
         stats_rows[nickname] = {
             "打卡次数": checkin_count,
